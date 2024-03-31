@@ -60,7 +60,7 @@ app.post("/api/usuarios", async (req, res) => {
     }
 
     // Criptografar a senha usando bcrypt
-    const hashedPassword = await bcrypt.hash(password, 10); // O segundo argumento é o "salt rounds", que determina a força do hash
+    // const hashedPassword = await bcrypt.hash(password, 10); // O segundo argumento é o "salt rounds", que determina a força do hash
 
     const newUser = new Usuario({
       username,
@@ -121,7 +121,7 @@ app.post("/usuarios/login", async (req, res) => {
     if (!user) {
       return res.status(401).json({ error: "Credenciais inválidas." });
     }
-
+    console.log(password,user.password)
     // Comparar a senha fornecida com a senha armazenada
     if (password !== user.password) {
       return res.status(401).json({ error: "Credenciais inválidas." });
