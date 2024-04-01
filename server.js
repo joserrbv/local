@@ -24,6 +24,26 @@ const db = require("./db/db");
 
 db();
 
+const API_PASSWORD = process.env.API_PASSWORD;
+// Rota de autenticação na página inicial
+// Rota para a página inicial
+app.get("/", (req, res) => {
+  res.sendFile(__dirname + "/index.html");
+});
+
+// Rota para autenticar a senha
+app.post("/", (req, res) => {
+  const { password } = req.body;
+
+  if (password === process.env.API_PASSWORD) {
+    // Senha correta, conceda acesso à API
+    res.status(200).send("Acesso concedido à API");
+  } else {
+    // Senha incorreta, negue o acesso
+    res.status(401).send("Credenciais inválidas");
+  }
+});
+
 // Middleware de validação para o registro de usuários
 const validateUserRegistration = [
   check("email").isEmail({}),
@@ -31,11 +51,18 @@ const validateUserRegistration = [
 ];
 
 // Importando o modelo de usuário
-const User = require("../model/user");
+const User = require("./model/user");
 
 User();
 
 // Rotas CRUD
+
+// Função para criar o hash da senha
+async function hashSenha(senha) {
+  const saltRounds = 10;
+  const hashedSenha = await bcrypt.hash(senha, saltRounds);
+  return hashedSenha;
+}
 
 // Rota para criar um novo usuário
 app.post("/api/users", validateUserRegistration, async (req, res) => {
@@ -48,12 +75,23 @@ app.post("/api/users", validateUserRegistration, async (req, res) => {
     username,
     email,
     password,
+    confirmPassword,
     companyName,
     cnpj,
     whatsapp,
     address,
     instagram,
   } = req.body;
+
+  // Verificar se a senha e a confirmação de senha coincidem
+  if (password !== confirmPassword) {
+    return res
+      .status(400)
+      .json({ error: "As senhas password e confirmPassword não coincidem." });
+  }
+
+  // Criar hash da senha
+  const hashedPassword = await hashSenha(password);
 
   try {
     // Verificar se o usuário já existe
@@ -62,13 +100,11 @@ app.post("/api/users", validateUserRegistration, async (req, res) => {
       return res.status(400).json({ message: "Este email já está cadastrado" });
     }
 
-    // Crie um hash da senha
-    const hashedPassword = await bcrypt.hash(password, 10);
-
     const newUser = new User({
       username,
       email,
       password: hashedPassword,
+      confirmPassword,
       companyName,
       cnpj,
       whatsapp,
@@ -134,7 +170,7 @@ app.post("/api/users/login", validateUserLogin, async (req, res) => {
 
     // Verifique se a senha corresponde ao hash no banco de dados
     const passwordMatch = await bcrypt.compare(password, user.password);
-    console.log(passwordMatch, password, user.password);
+
     if (!passwordMatch) {
       return res.status(401).send("Credenciais inválidas");
     }
